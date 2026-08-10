@@ -109,7 +109,7 @@ async function main() {
       .values({
         name: c.name,
         handle: c.handle ?? "",
-        colorHex: c.colorHex ?? "#7C5CFF",
+        colorHex: c.colorHex ?? "#3B6EF6",
         brandNotes: c.brandNotes ?? "",
         position: position++,
       })

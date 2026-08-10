@@ -34,8 +34,17 @@ const globalForDb = globalThis as unknown as {
  * frozen (or simply idle long enough for the server to drop us), and we build
  * a fresh one. Back-to-back requests still share a connection; a thawed
  * instance never inherits a corpse.
+ *
+ * Tuning notes:
+ *  - STALE_AFTER_MS is kept generous (2 min) so warm instances keep a live
+ *    socket across typical user think-time and skip the ~150-400ms TLS
+ *    handshake to Supabase on every click. The staleness check still discards
+ *    a socket that a frozen serverless instance left for dead.
+ *  - max is raised so concurrent server queries (loadWorkspace fires three at
+ *    once) don't serialize behind a single connection. Pointing DATABASE_URL
+ *    at Supabase's transaction pooler (port 6543) keeps this cheap.
  */
-const STALE_AFTER_MS = 15_000;
+const STALE_AFTER_MS = 120_000;
 
 function connection(): Database {
   const url = resolveDatabaseUrl();
@@ -56,14 +65,14 @@ function connection(): Database {
   }
 
   const client = postgres(url, {
-    max: 1,
+    max: 10,
     ssl: sslModeFor(url),
     // Transaction poolers (Neon/Supabase pgbouncer) reject prepared statements.
     prepare: false,
     // Fail fast and surface a real error rather than hanging a page render.
     connect_timeout: 10,
-    idle_timeout: 15,
-    max_lifetime: 60,
+    idle_timeout: 30,
+    max_lifetime: 600,
     onnotice: () => {},
   });
 

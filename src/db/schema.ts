@@ -21,7 +21,7 @@ export const companies = pgTable("companies", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   handle: text("handle").notNull().default(""),
-  colorHex: text("color_hex").notNull().default("#7C5CFF"),
+  colorHex: text("color_hex").notNull().default("#3B6EF6"),
   brandNotes: text("brand_notes").notNull().default(""),
   position: integer("position").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })

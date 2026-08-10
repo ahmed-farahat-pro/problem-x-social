@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       workspace.companies.find((c) =>
         c.boards.some((b) => b.id === body.boardId),
       )?.colorHex ??
-      "#7C5CFF";
+      "#3B6EF6";
 
     const base = sanitiseFileName(body.filename || label);
 

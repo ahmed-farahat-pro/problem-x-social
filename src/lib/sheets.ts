@@ -62,7 +62,7 @@ function sanitiseSheetName(raw: string, used: Set<string>): string {
  */
 export async function buildWorkbook(
   sheets: SheetSpec[],
-  accentHex = "#7C5CFF",
+  accentHex = "#3B6EF6",
 ): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Problem-X Social";

@@ -63,7 +63,7 @@ export default async function PrintPage({
       <header
         className="-mx-8 mb-8 px-8 py-10 text-white print:-mx-0 print:px-8"
         style={{
-          background: `linear-gradient(135deg, ${company.colorHex}, #FF4D8D)`,
+          background: `linear-gradient(135deg, ${company.colorHex}, #0EA5E9)`,
           printColorAdjust: "exact",
           WebkitPrintColorAdjust: "exact",
         }}
@@ -212,7 +212,7 @@ export default async function PrintPage({
               )}
 
               {post.ideas && (
-                <p className="mt-1.5 text-[10px] text-[#5b4bb5]">
+                <p className="mt-1.5 text-[10px] text-[#2451eb]">
                   <strong>Ideas </strong>
                   {post.ideas}
                 </p>

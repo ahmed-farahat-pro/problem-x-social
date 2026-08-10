@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "./types";
 
@@ -84,8 +84,10 @@ export async function requireUser(): Promise<SessionUser> {
 }
 
 export async function countUsers(): Promise<number> {
-  const rows = await db.select({ id: schema.users.id }).from(schema.users);
-  return rows.length;
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.users);
+  return row?.count ?? 0;
 }
 
 export async function findUserByEmail(email: string) {

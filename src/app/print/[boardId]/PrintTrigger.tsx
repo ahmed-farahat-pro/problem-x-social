@@ -18,7 +18,7 @@ export default function PrintTrigger() {
       </p>
       <button
         onClick={() => window.print()}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C5CFF] px-3 py-1.5 text-xs font-medium text-white"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-[#3B6EF6] px-3 py-1.5 text-xs font-medium text-white"
       >
         <Printer className="size-3.5" />
         Print

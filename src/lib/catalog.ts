@@ -109,14 +109,14 @@ export function parsePublish(raw: string): PublishStatus {
 // ------------------------------------------------------------------- palettes
 
 export const COMPANY_PALETTE = [
-  "#7C5CFF",
-  "#FF4D8D",
+  "#3B6EF6",
+  "#0EA5E9",
   "#22C55E",
   "#F59E0B",
   "#38BDF8",
   "#F43F5E",
   "#14B8A6",
-  "#A855F7",
+  "#2563EB",
 ];
 
 export const PLATFORM_COLORS: Record<string, string> = {
@@ -193,10 +193,10 @@ export const PUBLISH_TONE: Record<PublishStatus, Tone> = {
     dot: "#8A94A6",
   },
   Scheduled: {
-    fg: "text-violet-400",
-    bg: "bg-violet-500/12",
-    border: "border-violet-500/25",
-    dot: "#7C5CFF",
+    fg: "text-sky-400",
+    bg: "bg-sky-500/12",
+    border: "border-sky-500/25",
+    dot: "#3B6EF6",
   },
   Published: {
     fg: "text-emerald-400",

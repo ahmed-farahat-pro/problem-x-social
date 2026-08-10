@@ -58,7 +58,7 @@ import {
  * colour and no legend box is needed — the card title names what is plotted.
  * This is categorical slot 1 (brand-500), reused rather than cycled.
  */
-const SERIES_HUE = "#7c5cff";
+const SERIES_HUE = "#3b6ef6";
 
 /**
  * The pipeline is ordinal — swapping the stages would change the meaning — so it
@@ -66,7 +66,7 @@ const SERIES_HUE = "#7c5cff";
  * instead of four categorical hues. Validated on both surfaces: monotone L,
  * adjacent ΔL ≥ 0.06, hue spread 8°, dim end 2.46:1 on dark / 2.57:1 on light.
  */
-const PIPELINE_RAMP = ["#5734c9", "#6a45f0", "#8f6dff", "#ab90ff"];
+const PIPELINE_RAMP = ["#1d40d8", "#2451eb", "#6094fa", "#93bbfd"];
 
 // --------------------------------------------------------------- chart theme
 
