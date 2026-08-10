@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { Button, Input, Label, Spinner } from "@/components/ui";
 
 export default function LoginForm({ needsSetup }: { needsSetup: boolean }) {
-  const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">(
     needsSetup ? "register" : "login",
   );
@@ -16,10 +14,12 @@ export default function LoginForm({ needsSetup }: { needsSetup: boolean }) {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "submitting" | "redirecting">("idle");
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
+    setPhase("submitting");
     setError(null);
     try {
       const response = await fetch(
@@ -32,11 +32,31 @@ export default function LoginForm({ needsSetup }: { needsSetup: boolean }) {
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Something went wrong");
-      router.replace("/");
-      router.refresh();
+
+      setPhase("redirecting");
+
+      // A full document load, deliberately — not router.replace().
+      // The client router caches the RSC payload for "/", and before signing in
+      // that payload was a redirect back to /login, so a soft navigation could
+      // replay the redirect. Chasing it with router.refresh() then raced the
+      // in-flight navigation and left the button spinning forever. A document
+      // load re-runs the server render with the freshly set session cookie and
+      // bypasses the router cache entirely.
+      window.location.replace("/");
+
+      // If the workspace render is slow or fails, give control back rather than
+      // spinning indefinitely.
+      window.setTimeout(() => {
+        setError(
+          "Signed in, but loading the workspace is taking a while. Reload the page to continue.",
+        );
+        setBusy(false);
+        setPhase("idle");
+      }, 15000);
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
+      setPhase("idle");
     }
   }
 
@@ -99,7 +119,13 @@ export default function LoginForm({ needsSetup }: { needsSetup: boolean }) {
 
       <Button type="submit" variant="primary" size="lg" disabled={busy}>
         {busy && <Spinner />}
-        {mode === "login" ? "Sign in" : "Create account"}
+        {phase === "redirecting"
+          ? "Loading your workspace…"
+          : phase === "submitting"
+            ? "Signing in…"
+            : mode === "login"
+              ? "Sign in"
+              : "Create account"}
       </Button>
 
       {!needsSetup && (

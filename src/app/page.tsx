@@ -6,6 +6,7 @@ import { loadWorkspace } from "@/lib/workspace";
 import { PREFS_COOKIE, parsePrefs } from "@/lib/prefs";
 import { WorkspaceProvider } from "@/lib/store";
 import AppShell from "@/components/AppShell";
+import { ConfirmProvider } from "@/components/ConfirmProvider";
 import SetupNotice from "@/components/SetupNotice";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,9 @@ export default async function Home() {
 
   return (
     <WorkspaceProvider user={user} initialWorkspace={workspace} prefs={prefs}>
-      <AppShell />
+      <ConfirmProvider>
+        <AppShell />
+      </ConfirmProvider>
     </WorkspaceProvider>
   );
 }

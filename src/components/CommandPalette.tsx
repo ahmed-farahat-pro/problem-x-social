@@ -23,7 +23,6 @@ import {
   Table2,
 } from "lucide-react";
 import { BiText, EmptyState } from "@/components/ui";
-import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { EMPTY_FILTERS, type Post, type ViewMode } from "@/lib/types";
 import { cn, firstLine, formatShort } from "@/lib/utils";
@@ -94,7 +93,6 @@ function Palette({ onClose }: { onClose: () => void }) {
     createCompany,
   } = useStore();
 
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -110,9 +108,9 @@ function Palette({ onClose }: { onClose: () => void }) {
 
   const signOut = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
-    router.replace("/login");
-    router.refresh();
-  }, [router]);
+    // Full document load — the session cookie just changed.
+    window.location.replace("/login");
+  }, []);
 
   const actions = useMemo<Item[]>(() => {
     const list: Item[] = [

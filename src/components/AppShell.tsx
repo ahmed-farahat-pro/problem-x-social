@@ -34,6 +34,7 @@ import {
   Spinner,
 } from "./ui";
 import Sidebar from "./Sidebar";
+import { useConfirm } from "./ConfirmProvider";
 import Toasts from "./Toasts";
 import FilterBar from "./FilterBar";
 import PostEditor from "./PostEditor";
@@ -396,6 +397,7 @@ function SelectionBar({ onSchedule }: { onSchedule: () => void }) {
     notify,
     board,
   } = useStore();
+  const confirm = useConfirm();
   const ids = [...selected];
 
   return (
@@ -498,8 +500,13 @@ function SelectionBar({ onSchedule }: { onSchedule: () => void }) {
       <Button
         size="sm"
         variant="danger"
-        onClick={() => {
-          if (confirm(`Delete ${ids.length} post(s)?`)) void deletePosts(ids);
+        onClick={async () => {
+          const ok = await confirm({
+            title: `Delete ${ids.length} post${ids.length === 1 ? "" : "s"}?`,
+            message: "They'll be removed from this sheet permanently.",
+            confirmLabel: "Delete",
+          });
+          if (ok) void deletePosts(ids);
         }}
       >
         <Trash2 className="size-3.5" />

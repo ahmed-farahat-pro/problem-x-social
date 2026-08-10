@@ -12,8 +12,8 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { useConfirm } from "./ConfirmProvider";
 import { COMPANY_PALETTE } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 import type { Board, Company } from "@/lib/types";
@@ -33,8 +33,8 @@ import {
 const EMOJI_CHOICES = ["🗓️", "📄", "🚀", "🎯", "✨", "🔥", "📣", "🎬", "📸", "💡", "🧪", "🏆"];
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const router = useRouter();
   const store = useStore();
+  const confirm = useConfirm();
   const {
     workspace,
     companyId,
@@ -182,14 +182,13 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <MenuItem
                     danger
                     icon={<Trash2 className="size-3.5" />}
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Delete “${company.name}”? ${company.boards.length} sheet(s) and ${posts} post(s) will be removed.`,
-                        )
-                      ) {
-                        void deleteCompany(company.id);
-                      }
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: `Delete “${company.name}”?`,
+                        message: `${company.boards.length} sheet${company.boards.length === 1 ? "" : "s"} and ${posts} post${posts === 1 ? "" : "s"} will be removed permanently.`,
+                        confirmLabel: "Delete company",
+                      });
+                      if (ok) void deleteCompany(company.id);
                     }}
                   >
                     Delete company
@@ -266,15 +265,17 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                           <MenuItem
                             danger
                             icon={<Trash2 className="size-3.5" />}
-                            onClick={() => {
-                              if (
-                                board.posts.length === 0 ||
-                                confirm(
-                                  `Delete “${board.name}”? ${board.posts.length} post(s) will be removed.`,
-                                )
-                              ) {
+                            onClick={async () => {
+                              if (board.posts.length === 0) {
                                 void deleteBoard(board.id);
+                                return;
                               }
+                              const ok = await confirm({
+                                title: `Delete “${board.name}”?`,
+                                message: `${board.posts.length} post${board.posts.length === 1 ? "" : "s"} will be removed permanently.`,
+                                confirmLabel: "Delete sheet",
+                              });
+                              if (ok) void deleteBoard(board.id);
                             }}
                           >
                             Delete sheet
@@ -324,8 +325,10 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             icon={<LogOut className="size-3.5" />}
             onClick={async () => {
               await fetch("/api/auth/logout", { method: "POST" });
-              router.replace("/login");
-              router.refresh();
+              // Full document load: the session cookie just changed, and a soft
+              // navigation can replay a cached RSC payload from the signed-in
+              // state. See LoginForm for the same reasoning.
+              window.location.replace("/login");
             }}
           >
             Sign out
