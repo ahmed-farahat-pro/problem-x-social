@@ -226,6 +226,7 @@ export default function AppShell() {
             onChange={setViewMode}
             options={VIEW_OPTIONS}
             className="hidden shrink-0 lg:inline-flex"
+            labelClassName="hidden 2xl:inline"
           />
 
           <div className="flex items-center gap-1">

@@ -297,11 +297,14 @@ export function Segmented<T extends string>({
   onChange,
   options,
   className,
+  labelClassName = "hidden sm:inline",
 }: {
   value: T;
   onChange: (next: T) => void;
   options: { value: T; label: string; icon?: ReactNode }[];
   className?: string;
+  /** Lets a cramped container drop to icons only without losing the a11y name. */
+  labelClassName?: string;
 }) {
   return (
     <div
@@ -316,6 +319,8 @@ export function Segmented<T extends string>({
           key={o.value}
           role="tab"
           aria-selected={value === o.value}
+          aria-label={o.label}
+          title={o.label}
           onClick={() => onChange(o.value)}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-xs font-medium transition-colors focus-ring",
@@ -325,7 +330,7 @@ export function Segmented<T extends string>({
           )}
         >
           {o.icon}
-          <span className="hidden sm:inline">{o.label}</span>
+          <span className={labelClassName}>{o.label}</span>
         </button>
       ))}
     </div>
