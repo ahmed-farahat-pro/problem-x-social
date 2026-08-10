@@ -10,8 +10,10 @@ import {
   Palette,
   Pencil,
   Plus,
+  ShieldCheck,
   Trash2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useConfirm } from "./ConfirmProvider";
 import { COMPANY_PALETTE } from "@/lib/catalog";
@@ -35,6 +37,7 @@ const EMOJI_CHOICES = ["🗓️", "📄", "🚀", "🎯", "✨", "🔥", "📣",
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const store = useStore();
   const confirm = useConfirm();
+  const router = useRouter();
   const {
     workspace,
     companyId,
@@ -45,6 +48,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     createBoard,
     deleteCompany,
     deleteBoard,
+    permissions,
   } = store;
 
   // Tri-state: undefined means "follow the active company", so selecting a
@@ -166,33 +170,42 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     </span>
                   }
                 >
-                  <MenuItem icon={<Pencil className="size-3.5" />} onClick={() => setRenaming({ kind: "company", company })}>
-                    Rename
-                  </MenuItem>
-                  <MenuItem icon={<Palette className="size-3.5" />} onClick={() => setBranding(company)}>
-                    Brand settings
-                  </MenuItem>
+                  {permissions.canManageStructure && (
+                    <MenuItem icon={<Pencil className="size-3.5" />} onClick={() => setRenaming({ kind: "company", company })}>
+                      Rename
+                    </MenuItem>
+                  )}
+                  {permissions.canManageStructure && (
+                    <MenuItem icon={<Palette className="size-3.5" />} onClick={() => setBranding(company)}>
+                      Brand settings
+                    </MenuItem>
+                  )}
                   <MenuItem
                     icon={<FilePlus2 className="size-3.5" />}
                     onClick={() => void createBoard(company.id)}
+                    disabled={!permissions.canManageStructure}
                   >
                     New sheet
                   </MenuItem>
-                  <MenuSeparator />
-                  <MenuItem
-                    danger
-                    icon={<Trash2 className="size-3.5" />}
-                    onClick={async () => {
-                      const ok = await confirm({
-                        title: `Delete “${company.name}”?`,
-                        message: `${company.boards.length} sheet${company.boards.length === 1 ? "" : "s"} and ${posts} post${posts === 1 ? "" : "s"} will be removed permanently.`,
-                        confirmLabel: "Delete company",
-                      });
-                      if (ok) void deleteCompany(company.id);
-                    }}
-                  >
-                    Delete company
-                  </MenuItem>
+                  {permissions.canManageStructure && (
+                    <>
+                      <MenuSeparator />
+                      <MenuItem
+                        danger
+                        icon={<Trash2 className="size-3.5" />}
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: `Delete “${company.name}”?`,
+                            message: `${company.boards.length} sheet${company.boards.length === 1 ? "" : "s"} and ${posts} post${posts === 1 ? "" : "s"} will be removed permanently.`,
+                            confirmLabel: "Delete company",
+                          });
+                          if (ok) void deleteCompany(company.id);
+                        }}
+                      >
+                        Delete company
+                      </MenuItem>
+                    </>
+                  )}
                 </Menu>
               </div>
 
@@ -247,39 +260,47 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                             </span>
                           }
                         >
-                          <MenuItem
-                            icon={<Pencil className="size-3.5" />}
-                            onClick={() => setRenaming({ kind: "board", board })}
-                          >
-                            Rename
-                          </MenuItem>
-                          <MenuItem
-                            icon={<Copy className="size-3.5" />}
-                            onClick={() =>
-                              void createBoard(company.id, `${board.name} copy`, board.id)
-                            }
-                          >
-                            Duplicate sheet
-                          </MenuItem>
-                          <MenuSeparator />
-                          <MenuItem
-                            danger
-                            icon={<Trash2 className="size-3.5" />}
-                            onClick={async () => {
-                              if (board.posts.length === 0) {
-                                void deleteBoard(board.id);
-                                return;
+                          {permissions.canManageStructure && (
+                            <MenuItem
+                              icon={<Pencil className="size-3.5" />}
+                              onClick={() => setRenaming({ kind: "board", board })}
+                            >
+                              Rename
+                            </MenuItem>
+                          )}
+                          {permissions.canManageStructure && (
+                            <MenuItem
+                              icon={<Copy className="size-3.5" />}
+                              onClick={() =>
+                                void createBoard(company.id, `${board.name} copy`, board.id)
                               }
-                              const ok = await confirm({
-                                title: `Delete “${board.name}”?`,
-                                message: `${board.posts.length} post${board.posts.length === 1 ? "" : "s"} will be removed permanently.`,
-                                confirmLabel: "Delete sheet",
-                              });
-                              if (ok) void deleteBoard(board.id);
-                            }}
-                          >
-                            Delete sheet
-                          </MenuItem>
+                            >
+                              Duplicate sheet
+                            </MenuItem>
+                          )}
+                          {permissions.canManageStructure && (
+                            <>
+                              <MenuSeparator />
+                              <MenuItem
+                                danger
+                                icon={<Trash2 className="size-3.5" />}
+                                onClick={async () => {
+                                  if (board.posts.length === 0) {
+                                    void deleteBoard(board.id);
+                                    return;
+                                  }
+                                  const ok = await confirm({
+                                    title: `Delete “${board.name}”?`,
+                                    message: `${board.posts.length} post${board.posts.length === 1 ? "" : "s"} will be removed permanently.`,
+                                    confirmLabel: "Delete sheet",
+                                  });
+                                  if (ok) void deleteBoard(board.id);
+                                }}
+                              >
+                                Delete sheet
+                              </MenuItem>
+                            </>
+                          )}
                         </Menu>
                       </div>
                     );
@@ -287,7 +308,8 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
                   <button
                     onClick={() => void createBoard(company.id)}
-                    className="text-dim hover:text-body flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] transition-colors hover:bg-[var(--surface-hover)] focus-ring"
+                    disabled={!permissions.canManageStructure}
+                    className="text-dim hover:text-body flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] transition-colors hover:bg-[var(--surface-hover)] focus-ring disabled:pointer-events-none disabled:opacity-40"
                   >
                     <Plus className="size-3" />
                     New sheet
@@ -300,15 +322,17 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <footer className="flex items-center gap-2 border-t border-[var(--line)] px-3 py-2.5">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="flex-1 justify-start text-brand-400"
-          onClick={() => void createCompany()}
-        >
-          <Plus className="size-3.5" />
-          Company
-        </Button>
+        {permissions.canManageStructure && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 justify-start text-brand-400"
+            onClick={() => void createCompany()}
+          >
+            <Plus className="size-3.5" />
+            Company
+          </Button>
+        )}
         <Menu
           align="end"
           trigger={
@@ -321,6 +345,14 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             {store.user?.email}
           </div>
           <MenuSeparator />
+          {permissions.isAdmin && (
+            <MenuItem
+              icon={<ShieldCheck className="size-3.5" />}
+              onClick={() => router.push("/admin")}
+            >
+              Admin console
+            </MenuItem>
+          )}
           <MenuItem
             icon={<LogOut className="size-3.5" />}
             onClick={async () => {

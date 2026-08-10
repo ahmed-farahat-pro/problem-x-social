@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireUser } from "@/lib/auth";
+import { requireCan } from "@/lib/auth";
 import { fail, handle, ok, readJson } from "@/lib/api";
+import { filterPostPatch } from "@/lib/permissions";
 import { toPost } from "@/lib/workspace";
 import { pickPostFields } from "../route";
 import type { PostInput } from "@/lib/types";
@@ -12,12 +13,15 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: Params) {
   return handle(async () => {
-    await requireUser();
+    const user = await requireCan("update", "posts");
     const { id } = await params;
     const body = await readJson<PostInput & { boardId?: string }>(request);
 
-    const patch = pickPostFields(body);
-    if (body.boardId !== undefined) patch.boardId = body.boardId;
+    const filtered = filterPostPatch(user.role, pickPostFields(body));
+    const patch: Record<string, unknown> = { ...filtered };
+    if (body.boardId !== undefined && (user.role === "admin" || user.role === "owner")) {
+      patch.boardId = body.boardId;
+    }
     if (Object.keys(patch).length === 0) return fail("Nothing to update.");
     patch.updatedAt = new Date();
 
@@ -33,7 +37,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
 export async function DELETE(_request: Request, { params }: Params) {
   return handle(async () => {
-    await requireUser();
+    await requireCan("delete", "posts");
     const { id } = await params;
     await db.delete(schema.posts).where(eq(schema.posts.id, id));
     return ok({ ok: true });

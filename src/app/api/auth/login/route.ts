@@ -1,4 +1,5 @@
 import { createSession, findUserByEmail, verifyPassword } from "@/lib/auth";
+import { isRole } from "@/lib/permissions";
 import { fail, handle, ok, readJson } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -16,7 +17,15 @@ export async function POST(request: Request) {
       return fail("Email or password is incorrect.", 401);
     }
 
-    await createSession({ id: user.id, email: user.email, name: user.name });
-    return ok({ user: { id: user.id, email: user.email, name: user.name } });
+    const role = isRole(user.role) ? user.role : "content_creator";
+    await createSession({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role,
+    });
+    return ok({
+      user: { id: user.id, email: user.email, name: user.name, role },
+    });
   });
 }

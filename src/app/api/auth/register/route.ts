@@ -5,6 +5,8 @@ import {
   findUserByEmail,
   hashPassword,
 } from "@/lib/auth";
+import { isRole } from "@/lib/permissions";
+import { getInviteCode, getSignupsOpen } from "@/lib/settings";
 import { fail, handle, ok, readJson } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -30,12 +32,16 @@ export async function POST(request: Request) {
     const existingUsers = await countUsers();
 
     // The first account is open so the owner can claim a fresh deploy.
-    // Every later signup needs the invite code from the environment.
+    // Every later signup needs the invite code and open signups.
     if (existingUsers > 0) {
-      const expected = process.env.INVITE_CODE;
+      const signupsOpen = await getSignupsOpen();
+      if (!signupsOpen) {
+        return fail("Sign-ups are closed. Ask an admin for an account.", 403);
+      }
+      const expected = await getInviteCode();
       if (!expected) {
         return fail(
-          "Sign-ups are closed. Set INVITE_CODE to let teammates join.",
+          "Sign-ups are closed. Ask an admin to set an invite code.",
           403,
         );
       }
@@ -54,10 +60,24 @@ export async function POST(request: Request) {
         email,
         passwordHash: await hashPassword(password),
         name: name || email.split("@")[0],
+        // The very first account claims the workspace as its owner.
+        role: existingUsers === 0 ? "owner" : "content_creator",
       })
       .returning();
 
-    await createSession({ id: user.id, email: user.email, name: user.name });
-    return ok({ user: { id: user.id, email: user.email, name: user.name } });
+    await createSession({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: isRole(user.role) ? user.role : "content_creator",
+    });
+    return ok({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: isRole(user.role) ? user.role : "content_creator",
+      },
+    });
   });
 }

@@ -1,6 +1,6 @@
 import { desc } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireUser } from "@/lib/auth";
+import { requireCan } from "@/lib/auth";
 import { handle, ok, readJson } from "@/lib/api";
 import { COMPANY_PALETTE } from "@/lib/catalog";
 
@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   return handle(async () => {
-    await requireUser();
+    await requireCan("create", "companies");
     const body = await readJson<{
       name?: string;
       handle?: string;

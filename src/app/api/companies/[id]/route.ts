@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireUser } from "@/lib/auth";
+import { requireCan } from "@/lib/auth";
 import { fail, handle, ok, readJson } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: Params) {
   return handle(async () => {
-    await requireUser();
+    await requireCan("update", "companies");
     const { id } = await params;
     const body = await readJson<
       Partial<{
@@ -45,7 +45,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
 export async function DELETE(_request: Request, { params }: Params) {
   return handle(async () => {
-    await requireUser();
+    await requireCan("delete", "companies");
     const { id } = await params;
     // Boards and posts cascade from the FK definitions.
     await db.delete(schema.companies).where(eq(schema.companies.id, id));

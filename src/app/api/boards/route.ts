@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireUser } from "@/lib/auth";
+import { requireCan } from "@/lib/auth";
 import { fail, handle, ok, readJson } from "@/lib/api";
 import { toPost } from "@/lib/workspace";
 
@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   return handle(async () => {
-    await requireUser();
+    await requireCan("create", "boards");
     const body = await readJson<{
       companyId?: string;
       name?: string;

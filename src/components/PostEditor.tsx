@@ -171,9 +171,19 @@ function CaptionMeters({ post }: { post: Post }) {
 // --------------------------------------------------------------------- editor
 
 export default function PostEditor() {
-  const { focusedPost, setFocusedId, updatePost, deletePosts, duplicatePosts, notify } =
-    useStore();
+  const {
+    focusedPost,
+    setFocusedId,
+    updatePost,
+    deletePosts,
+    duplicatePosts,
+    notify,
+    permissions,
+  } = useStore();
   const isDesktop = useMediaQuery("(min-width: 1024px)", true);
+
+  const locked = (field: Parameters<typeof permissions.canEditField>[0]) =>
+    !permissions.canEditField(field);
 
   const [tagDraft, setTagDraft] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -324,6 +334,7 @@ export default function PostEditor() {
         variant="ghost"
         size="icon"
         aria-label="Duplicate post"
+        disabled={!permissions.canCreatePost}
         onClick={() => void duplicatePosts([post.id])}
       >
         <CopyPlus className="size-4" />
@@ -344,6 +355,7 @@ export default function PostEditor() {
         <MenuItem
           danger
           icon={<Trash2 className="size-3.5" />}
+          disabled={!permissions.canDeletePost}
           onClick={() => setConfirmDelete(true)}
         >
           Delete post
@@ -366,6 +378,7 @@ export default function PostEditor() {
           autoGrow
           rows={1}
           value={post.title}
+          readOnly={locked("title")}
           onChange={(e) => set({ title: e.target.value })}
           onKeyDown={(e) => {
             // Titles stay one logical line; the box still wraps visually.
@@ -376,7 +389,7 @@ export default function PostEditor() {
           }}
           placeholder="Untitled post"
           aria-label="Post title"
-          className="resize-none rounded-none border-0 bg-transparent p-0 text-lg leading-snug font-semibold focus:border-0"
+          className="resize-none rounded-none border-0 bg-transparent p-0 text-lg leading-snug font-semibold focus:border-0 read-only:cursor-not-allowed"
         />
 
         <Field label="Date" hint={post.date ? dayLabel(post.date) : "Unscheduled"}>
@@ -384,6 +397,7 @@ export default function PostEditor() {
             <Input
               type="date"
               value={post.date ?? ""}
+              disabled={locked("date")}
               onChange={(e) => set({ date: e.target.value || null }, true)}
               aria-label="Planned date"
               className="tabular min-w-0 flex-1"
@@ -392,6 +406,7 @@ export default function PostEditor() {
               variant="secondary"
               size="sm"
               className="h-9 shrink-0"
+              disabled={locked("date")}
               onClick={() => set({ date: post.date ? null : todayISO() }, true)}
               aria-label={post.date ? "Clear the planned date" : "Schedule for today"}
             >
@@ -415,28 +430,34 @@ export default function PostEditor() {
         </Field>
 
         <Field label="Content type">
-          <Menu
-            className="w-full"
-            trigger={
-              <MenuTrigger className="h-9" muted={!post.contentType}>
-                {post.contentType || "Pick a type"}
-              </MenuTrigger>
-            }
-          >
-            {CONTENT_TYPES.map((type) => (
-              <MenuItem
-                key={type}
-                selected={type === post.contentType}
-                onClick={() => set({ contentType: type }, true)}
-              >
-                {type}
+          {locked("contentType") ? (
+            <MenuTrigger className="h-9 opacity-60" muted={!post.contentType}>
+              {post.contentType || "Pick a type"}
+            </MenuTrigger>
+          ) : (
+            <Menu
+              className="w-full"
+              trigger={
+                <MenuTrigger className="h-9" muted={!post.contentType}>
+                  {post.contentType || "Pick a type"}
+                </MenuTrigger>
+              }
+            >
+              {CONTENT_TYPES.map((type) => (
+                <MenuItem
+                  key={type}
+                  selected={type === post.contentType}
+                  onClick={() => set({ contentType: type }, true)}
+                >
+                  {type}
+                </MenuItem>
+              ))}
+              <MenuSeparator />
+              <MenuItem disabled={!post.contentType} onClick={() => set({ contentType: "" }, true)}>
+                Clear
               </MenuItem>
-            ))}
-            <MenuSeparator />
-            <MenuItem disabled={!post.contentType} onClick={() => set({ contentType: "" }, true)}>
-              Clear
-            </MenuItem>
-          </Menu>
+            </Menu>
+          )}
         </Field>
 
         <Field
@@ -451,6 +472,7 @@ export default function PostEditor() {
                 <button
                   key={name}
                   type="button"
+                  disabled={locked("platforms")}
                   aria-pressed={active}
                   onClick={() => togglePlatform(name)}
                   style={
@@ -460,7 +482,7 @@ export default function PostEditor() {
                   }
                   className={cn(
                     "focus-ring inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1",
-                    "text-[11px] font-medium transition-colors",
+                    "text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
                     active ? "text-white" : "hover:bg-[var(--surface-hover)]",
                   )}
                 >
@@ -490,10 +512,11 @@ export default function PostEditor() {
         >
           <Textarea
             value={post.content}
+            readOnly={locked("content")}
             onChange={(e) => set({ content: e.target.value })}
             placeholder="اكتب الكابشن هنا… / Write the caption here…"
             aria-label="Caption"
-            className="min-h-[200px]"
+            className="min-h-[200px] read-only:cursor-not-allowed"
           />
           <CaptionMeters post={post} />
         </Field>
@@ -501,50 +524,67 @@ export default function PostEditor() {
         <Field label="Status">
           <div className="card space-y-2.5 p-3">
             <StatusRow label="Design">
-              <Menu align="end" trigger={<DesignPill value={post.designStatus} />}>
-                {DESIGN_STATUSES.map((status) => (
-                  <MenuItem
-                    key={status}
-                    selected={status === post.designStatus}
-                    onClick={() => set({ designStatus: status }, true)}
-                  >
-                    {status}
-                  </MenuItem>
-                ))}
-              </Menu>
+              {locked("designStatus") ? (
+                <DesignPill value={post.designStatus} />
+              ) : (
+                <Menu align="end" trigger={<DesignPill value={post.designStatus} />}>
+                  {DESIGN_STATUSES.map((status) => (
+                    <MenuItem
+                      key={status}
+                      selected={status === post.designStatus}
+                      onClick={() => set({ designStatus: status }, true)}
+                    >
+                      {status}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              )}
             </StatusRow>
             <StatusRow label="Approval">
-              <Menu align="end" trigger={<ApprovalPill value={post.approval} />}>
-                {APPROVAL_STATUSES.map((status) => (
-                  <MenuItem
-                    key={status}
-                    selected={status === post.approval}
-                    onClick={() => set({ approval: status }, true)}
-                  >
-                    {status}
-                  </MenuItem>
-                ))}
-              </Menu>
+              {locked("approval") ? (
+                <ApprovalPill value={post.approval} />
+              ) : (
+                <Menu align="end" trigger={<ApprovalPill value={post.approval} />}>
+                  {APPROVAL_STATUSES.map((status) => (
+                    <MenuItem
+                      key={status}
+                      selected={status === post.approval}
+                      onClick={() => set({ approval: status }, true)}
+                    >
+                      {status}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              )}
             </StatusRow>
             <StatusRow label="Published">
-              <Menu align="end" trigger={<PublishPill value={post.published} />}>
-                {PUBLISH_STATUSES.map((status) => (
-                  <MenuItem
-                    key={status}
-                    selected={status === post.published}
-                    onClick={() => set({ published: status }, true)}
-                  >
-                    {status}
-                  </MenuItem>
-                ))}
-              </Menu>
+              {locked("published") ? (
+                <PublishPill value={post.published} />
+              ) : (
+                <Menu align="end" trigger={<PublishPill value={post.published} />}>
+                  {PUBLISH_STATUSES.map((status) => (
+                    <MenuItem
+                      key={status}
+                      selected={status === post.published}
+                      onClick={() => set({ published: status }, true)}
+                    >
+                      {status}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              )}
             </StatusRow>
             <Button
               variant="secondary"
               size="sm"
               className="w-full justify-center"
               onClick={markPublished}
-              disabled={fullyPublished}
+              disabled={
+                fullyPublished ||
+                locked("designStatus") ||
+                locked("approval") ||
+                locked("published")
+              }
             >
               <CheckCheck className="size-3.5" />
               {fullyPublished ? "Fully published" : "Mark fully published"}
@@ -559,10 +599,11 @@ export default function PostEditor() {
               inputMode="url"
               dir="ltr"
               value={post.driveLink}
+              readOnly={locked("driveLink")}
               onChange={(e) => set({ driveLink: e.target.value })}
               placeholder="https://drive.google.com/…"
               aria-label="Drive link"
-              className="min-w-0 flex-1"
+              className="min-w-0 flex-1 read-only:cursor-not-allowed"
             />
             <Button
               variant="secondary"
@@ -596,9 +637,10 @@ export default function PostEditor() {
                   <span className="truncate">{tag}</span>
                   <button
                     type="button"
+                    disabled={locked("tags")}
                     onClick={() => set({ tags: post.tags.filter((t) => t !== tag) }, true)}
                     aria-label={`Remove tag ${tag}`}
-                    className="focus-ring text-dim grid size-4 shrink-0 place-items-center rounded-full transition-colors hover:bg-rose-500/15 hover:text-rose-400"
+                    className="focus-ring text-dim grid size-4 shrink-0 place-items-center rounded-full transition-colors hover:bg-rose-500/15 hover:text-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <X className="size-3" />
                   </button>
@@ -610,6 +652,7 @@ export default function PostEditor() {
             <Input
               value={tagDraft}
               dir={dirOf(tagDraft)}
+              disabled={locked("tags")}
               onChange={(e) => setTagDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -626,7 +669,7 @@ export default function PostEditor() {
               size="sm"
               className="h-9 shrink-0"
               onClick={addTag}
-              disabled={!tagDraft.trim()}
+              disabled={!tagDraft.trim() || locked("tags")}
             >
               <Plus className="size-3.5" /> Add
             </Button>
@@ -637,29 +680,33 @@ export default function PostEditor() {
           <Input
             value={post.owner}
             dir={dirOf(post.owner)}
+            readOnly={locked("owner")}
             onChange={(e) => set({ owner: e.target.value })}
             placeholder="Who is on it?"
             aria-label="Owner"
+            className="read-only:cursor-not-allowed"
           />
         </Field>
 
         <Field label="Revision notes">
           <Textarea
             value={post.notes}
+            readOnly={locked("notes")}
             onChange={(e) => set({ notes: e.target.value })}
             placeholder="ملاحظات المراجعة… / Client feedback…"
             aria-label="Revision notes"
-            className="min-h-[80px]"
+            className="min-h-[80px] read-only:cursor-not-allowed"
           />
         </Field>
 
         <Field label="Ideas out of the box">
           <Textarea
             value={post.ideas}
+            readOnly={locked("ideas")}
             onChange={(e) => set({ ideas: e.target.value })}
             placeholder="Wild ideas, hooks, references…"
             aria-label="Ideas out of the box"
-            className="min-h-[60px]"
+            className="min-h-[60px] read-only:cursor-not-allowed"
           />
         </Field>
 

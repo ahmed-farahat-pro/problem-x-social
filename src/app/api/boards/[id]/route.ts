@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireUser } from "@/lib/auth";
+import { requireCan } from "@/lib/auth";
 import { fail, handle, ok, readJson } from "@/lib/api";
 
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: Params) {
   return handle(async () => {
-    await requireUser();
+    await requireCan("update", "boards");
     const { id } = await params;
     const body = await readJson<
       Partial<{ name: string; emoji: string; position: number; companyId: string }>
@@ -33,7 +33,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
 export async function DELETE(_request: Request, { params }: Params) {
   return handle(async () => {
-    await requireUser();
+    await requireCan("delete", "boards");
     const { id } = await params;
     await db.delete(schema.boards).where(eq(schema.boards.id, id));
     return ok({ ok: true });

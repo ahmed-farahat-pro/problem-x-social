@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { can, isRole, type Role } from "./permissions";
 import type { SessionUser } from "./types";
 
 const COOKIE = "px_session";
@@ -31,6 +32,7 @@ export async function createSession(user: SessionUser) {
     sub: user.id,
     email: user.email,
     name: user.name,
+    role: user.role,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -59,10 +61,12 @@ export async function getSession(): Promise<SessionUser | null> {
     if (!token) return null;
     const { payload } = await jwtVerify(token, secret());
     if (!payload.sub) return null;
+    const role = isRole(payload.role) ? payload.role : "content_creator";
     return {
       id: String(payload.sub),
       email: String(payload.email ?? ""),
       name: String(payload.name ?? ""),
+      role,
     };
   } catch {
     return null;
@@ -77,10 +81,38 @@ export class UnauthorizedError extends Error {
   }
 }
 
+/** Thrown when the signed-in user lacks permission for an action. */
+export class ForbiddenError extends Error {
+  constructor() {
+    super("You don't have permission to do that");
+    this.name = "ForbiddenError";
+  }
+}
+
 export async function requireUser(): Promise<SessionUser> {
   const user = await getSession();
   if (!user) throw new UnauthorizedError();
   return user;
+}
+
+/** Require a specific capability, returning the user if allowed. */
+export async function requireCan(
+  action: Parameters<typeof can>[1],
+  resource: Parameters<typeof can>[2],
+): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!can(user.role, action, resource)) throw new ForbiddenError();
+  return user;
+}
+
+export async function requireAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (user.role !== "admin") throw new ForbiddenError();
+  return user;
+}
+
+export function roleOf(user: SessionUser): Role {
+  return user.role;
 }
 
 export async function countUsers(): Promise<number> {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { DatabaseNotConfiguredError } from "@/db";
-import { UnauthorizedError } from "./auth";
+import { ForbiddenError, UnauthorizedError } from "./auth";
 
 export function ok<T>(data: T, init?: number) {
   return NextResponse.json(data, { status: init ?? 200 });
@@ -19,6 +19,12 @@ export async function handle<T>(fn: () => Promise<T>) {
     return result instanceof Response ? result : ok(result);
   } catch (error) {
     if (error instanceof UnauthorizedError) return fail("Not signed in", 401);
+    if (error instanceof ForbiddenError) {
+      return fail(
+        error.message || "You don't have permission to do that",
+        403,
+      );
+    }
     if (error instanceof DatabaseNotConfiguredError) {
       return fail(error.message, 503);
     }

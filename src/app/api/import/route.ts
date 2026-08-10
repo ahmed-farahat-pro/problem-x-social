@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireUser } from "@/lib/auth";
+import { requireCan, requireUser } from "@/lib/auth";
 import { fail, handle, ok } from "@/lib/api";
 import { parseDelimited, readWorkbook, rowsToPosts } from "@/lib/sheets";
 import { toPost } from "@/lib/workspace";
@@ -64,10 +64,17 @@ interface CommitBody {
 /** Step 2: commit the previewed rows to the chosen destination. */
 export async function POST(request: Request) {
   return handle(async () => {
-    await requireUser();
     const body = (await request.json()) as CommitBody;
     const sheets = (body.sheets ?? []).filter((s) => s.posts?.length);
     if (!sheets.length) return fail("Nothing to import.");
+
+    // Importing into the current sheet only adds posts; any other destination
+    // creates companies and/or boards, which needs structural rights.
+    if (body.destination === "currentBoard") {
+      await requireCan("create", "posts");
+    } else {
+      await requireCan("create", "companies");
+    }
 
     if (body.destination === "currentBoard") {
       if (!body.boardId) return fail("boardId is required.");

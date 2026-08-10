@@ -1,7 +1,8 @@
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireUser } from "@/lib/auth";
+import { requireCan } from "@/lib/auth";
 import { fail, handle, ok, readJson } from "@/lib/api";
+import { filterPostPatch } from "@/lib/permissions";
 import { toPost } from "@/lib/workspace";
 import type { PostInput } from "@/lib/types";
 
@@ -34,7 +35,7 @@ export function pickPostFields(input: PostInput) {
 
 export async function POST(request: Request) {
   return handle(async () => {
-    await requireUser();
+    const user = await requireCan("create", "posts");
     const body = await readJson<PostInput & { boardId?: string }>(request);
     if (!body.boardId) return fail("boardId is required.");
 
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
       .values({
         boardId: body.boardId,
         position: body.position ?? (last[0]?.position ?? -1) + 1,
-        ...pickPostFields(body),
+        ...filterPostPatch(user.role, pickPostFields(body)),
       })
       .returning();
 

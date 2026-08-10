@@ -25,6 +25,7 @@ import {
 } from "./types";
 import { writePrefs, type Prefs } from "./prefs";
 import { todayISO, weekStart } from "./utils";
+import { permissionsFor, type Permissions } from "./permissions";
 
 // ------------------------------------------------------------------ requests
 
@@ -192,6 +193,7 @@ export interface Toast {
 
 interface StoreValue {
   user: SessionUser | null;
+  permissions: Permissions;
   workspace: Workspace;
   loading: boolean;
   error: string | null;
@@ -274,6 +276,13 @@ export function WorkspaceProvider({
   const [workspace, setWorkspace] = useState<Workspace>(initialWorkspace);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Permissions are derived from the server-provided role. The store re-creates
+  // the snapshot per render, but permissionsFor is cheap and the object shape is
+  // stable enough for the consumers that read it.
+  const permissions = user
+    ? permissionsFor(user.role)
+    : permissionsFor("content_creator");
 
   const [companyIdPref, setCompanyId] = useState<string | null>(
     prefs.companyId ?? null,
@@ -378,6 +387,10 @@ export function WorkspaceProvider({
 
   const createCompany = useCallback(
     async (name = "New Company") => {
+      if (!permissions.canManageStructure) {
+        notify("You don't have permission to add companies", "error");
+        return null;
+      }
       try {
         const { company: created, board: createdBoard } = await api<{
           company: Omit<Company, "boards">;
@@ -405,7 +418,7 @@ export function WorkspaceProvider({
         return null;
       }
     },
-    [patchLocal, notify],
+    [permissions, patchLocal, notify],
   );
 
   const updateCompany = useCallback(
@@ -445,6 +458,10 @@ export function WorkspaceProvider({
 
   const createBoard = useCallback(
     async (targetCompanyId: string, name = "New Sheet", duplicateOf?: string) => {
+      if (!permissions.canManageStructure) {
+        notify("You don't have permission to add sheets", "error");
+        return null;
+      }
       try {
         const { board: created, posts } = await api<{
           board: Omit<Board, "posts">;
@@ -470,7 +487,7 @@ export function WorkspaceProvider({
         return null;
       }
     },
-    [patchLocal, notify],
+    [permissions, patchLocal, notify],
   );
 
   const updateBoard = useCallback(
@@ -520,6 +537,10 @@ export function WorkspaceProvider({
   const createPost = useCallback(
     async (input: PostInput = {}) => {
       if (!boardId) return null;
+      if (!permissions.canCreatePost) {
+        notify("You don't have permission to create posts", "error");
+        return null;
+      }
       // Continue the cadence: the day after the latest planned date.
       const dates = (board?.posts ?? []).map((p) => p.date).filter(Boolean) as string[];
       const latest = dates.sort().at(-1);
@@ -545,7 +566,7 @@ export function WorkspaceProvider({
         return null;
       }
     },
-    [boardId, board, upsertPosts, notify],
+    [boardId, board, upsertPosts, notify, permissions],
   );
 
   // Field edits fire constantly while typing, so writes are debounced per post
@@ -569,6 +590,17 @@ export function WorkspaceProvider({
 
   const updatePost = useCallback(
     (id: string, patch: PostInput, immediate = false) => {
+      // Drop fields this role can't write — keeps the optimistic UI honest and
+      // avoids sending a PATCH the server would reject field-by-field.
+      const allowed = permissions.editableFields;
+      const filtered: PostInput = { ...patch };
+      if (allowed !== "all") {
+        const permit = new Set(allowed);
+        for (const key of Object.keys(filtered) as (typeof allowed)[number][]) {
+          if (!permit.has(key)) delete filtered[key];
+        }
+      }
+      if (Object.keys(filtered).length === 0) return;
       // Only rebuild the branch that actually contains the post. Remapping the
       // whole tree on every keystroke gave every company and board a new
       // identity, invalidating every memo and re-rendering the entire view.
@@ -583,7 +615,7 @@ export function WorkspaceProvider({
                 ...b,
                 posts: b.posts.map((p) =>
                   p.id === id
-                    ? { ...p, ...patch, updatedAt: new Date().toISOString() }
+                    ? { ...p, ...filtered, updatedAt: new Date().toISOString() }
                     : p,
                 ),
               };
@@ -594,11 +626,11 @@ export function WorkspaceProvider({
 
       const existing = pending.current.get(id);
       if (existing) window.clearTimeout(existing.timer);
-      const merged = { ...(existing?.patch ?? {}), ...patch };
+      const merged = { ...(existing?.patch ?? {}), ...filtered };
       const timer = window.setTimeout(() => void flushPost(id), immediate ? 0 : 550);
       pending.current.set(id, { patch: merged, timer });
     },
-    [patchLocal, flushPost],
+    [permissions, patchLocal, flushPost],
   );
 
   // Don't lose the last keystroke when the tab goes away.
@@ -619,6 +651,10 @@ export function WorkspaceProvider({
   const deletePosts = useCallback(
     async (ids: string[]) => {
       if (!ids.length) return;
+      if (!permissions.canDeletePost) {
+        notify("You don't have permission to delete posts", "error");
+        return;
+      }
       const previous = workspace;
       patchLocal((ws) => ({
         companies: ws.companies.map((c) => ({
@@ -642,37 +678,54 @@ export function WorkspaceProvider({
         notify((e as Error).message, "error");
       }
     },
-    [workspace, focusedId, patchLocal, notify],
+    [workspace, focusedId, patchLocal, notify, permissions],
   );
 
   const bulkUpdate = useCallback(
     async (ids: string[], patch: PostInput) => {
       if (!ids.length) return;
+      // Restrict the bulk patch to fields this role may edit.
+      const allowed = permissions.editableFields;
+      const filtered: PostInput = { ...patch };
+      if (allowed !== "all") {
+        const permit = new Set(allowed);
+        for (const key of Object.keys(filtered) as (typeof allowed)[number][]) {
+          if (!permit.has(key)) delete filtered[key];
+        }
+      }
+      if (Object.keys(filtered).length === 0) {
+        notify("You can't edit those fields", "error");
+        return;
+      }
       patchLocal((ws) => ({
         companies: ws.companies.map((c) => ({
           ...c,
           boards: c.boards.map((b) => ({
             ...b,
-            posts: b.posts.map((p) => (ids.includes(p.id) ? { ...p, ...patch } : p)),
+            posts: b.posts.map((p) => (ids.includes(p.id) ? { ...p, ...filtered } : p)),
           })),
         })),
       }));
       try {
         await api("/api/posts/bulk", {
           method: "POST",
-          json: { action: "update", ids, patch },
+          json: { action: "update", ids, patch: filtered },
         });
       } catch (e) {
         notify((e as Error).message, "error");
         void refresh();
       }
     },
-    [patchLocal, notify, refresh],
+    [permissions, patchLocal, notify, refresh],
   );
 
   const duplicatePosts = useCallback(
     async (ids: string[], offsetDays = 0) => {
       if (!ids.length || !boardId) return;
+      if (!permissions.canCreatePost) {
+        notify("You don't have permission to duplicate posts", "error");
+        return;
+      }
       try {
         const { posts } = await api<{ posts: Post[] }>("/api/posts/bulk", {
           method: "POST",
@@ -688,12 +741,16 @@ export function WorkspaceProvider({
         notify((e as Error).message, "error");
       }
     },
-    [boardId, upsertPosts, notify],
+    [boardId, upsertPosts, notify, permissions],
   );
 
   const movePosts = useCallback(
     async (ids: string[], targetBoardId: string) => {
       if (!ids.length) return;
+      if (!permissions.canDeletePost) {
+        notify("You don't have permission to move posts", "error");
+        return;
+      }
       try {
         const { posts: moved } = await api<{ posts: Post[] }>("/api/posts/bulk", {
           method: "POST",
@@ -718,12 +775,16 @@ export function WorkspaceProvider({
         notify((e as Error).message, "error");
       }
     },
-    [patchLocal, notify],
+    [patchLocal, notify, permissions],
   );
 
   const reschedule = useCallback(
     async (ids: string[], start: string, step: number, skipWeekends: boolean) => {
       if (!ids.length) return;
+      if (!permissions.canEditField("date")) {
+        notify("You don't have permission to reschedule posts", "error");
+        return;
+      }
       try {
         const { posts } = await api<{ posts: Post[] }>("/api/posts/bulk", {
           method: "POST",
@@ -735,7 +796,7 @@ export function WorkspaceProvider({
         notify((e as Error).message, "error");
       }
     },
-    [boardId, upsertPosts, notify],
+    [boardId, upsertPosts, notify, permissions],
   );
 
   const toggleSelected = useCallback((id: string, additive = false) => {
@@ -761,6 +822,7 @@ export function WorkspaceProvider({
 
   const value: StoreValue = {
     user,
+    permissions,
     workspace,
     loading,
     error,

@@ -12,7 +12,19 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull().default(""),
+  /** admin | owner | designer | content_creator — drives permissions. */
+  role: text("role").notNull().default("content_creator"),
   createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Runtime-configurable workspace settings (invite code, signup toggle…).
+ *  Read first; fall back to environment when a key isn't present. */
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
