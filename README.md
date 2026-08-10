@@ -61,6 +61,17 @@ If anything is still missing the app shows a setup screen that probes your datab
 
 SSL is enabled automatically for any non-local host, so a hosted connection string works even when it omits `sslmode=require`. Pass `?sslmode=disable` if you ever need plaintext.
 
+### Region
+
+`vercel.json` pins functions to `fra1` (Frankfurt). Vercel's default is `iad1`
+(Washington DC), which for a team in the Middle East or Europe means every
+request — and every database query — crosses the Atlantic.
+
+**Set this to whichever region your database lives in.** That single hop
+dominates latency; being close to your users matters less than being close to
+your data. `arn1` Stockholm, `lhr1` London, `cdg1` Paris and `dub1` Dublin are
+the other European options.
+
 Everything runs on the Node runtime with `force-dynamic` on the authenticated routes, so there's no stale-cache surprise. Serverless-safe details are already handled: a single pooled connection cached on `globalThis`, and `prepare: false` so transaction poolers (Neon, Supabase) don't reject prepared statements.
 
 ---
