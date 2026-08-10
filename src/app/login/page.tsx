@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
   if (!isDatabaseConfigured() || !process.env.AUTH_SECRET) {
-    return <SetupNotice />;
+    return await SetupNotice();
   }
 
   let needsSetup = false;
@@ -18,7 +18,7 @@ export default async function LoginPage() {
   } catch (error) {
     // Tables missing → the schema hasn't been pushed yet.
     if (error && typeof error === "object" && "digest" in error) throw error;
-    return <SetupNotice />;
+    return await SetupNotice();
   }
 
   return (

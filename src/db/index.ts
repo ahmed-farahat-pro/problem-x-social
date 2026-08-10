@@ -1,18 +1,19 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { resolveDatabaseUrl } from "./url";
 
 export class DatabaseNotConfiguredError extends Error {
   constructor() {
     super(
-      "DATABASE_URL is not set. Add a Postgres connection string to your environment.",
+      "No Postgres connection string found. Set DATABASE_URL (or connect a database on Vercel).",
     );
     this.name = "DatabaseNotConfiguredError";
   }
 }
 
 export function isDatabaseConfigured() {
-  return Boolean(process.env.DATABASE_URL);
+  return Boolean(resolveDatabaseUrl());
 }
 
 // Serverless functions get recycled constantly, so the client is cached on
@@ -22,7 +23,7 @@ const globalForDb = globalThis as unknown as {
 };
 
 function client() {
-  const url = process.env.DATABASE_URL;
+  const url = resolveDatabaseUrl();
   if (!url) throw new DatabaseNotConfiguredError();
   if (!globalForDb.__pxClient) {
     globalForDb.__pxClient = postgres(url, {

@@ -15,7 +15,7 @@ You need Node 20+ and a Postgres database.
 ```bash
 npm install
 cp .env.example .env.local        # then fill in the two values
-npm run db:push                   # create the tables
+npm run db:migrate                # create the tables
 npm run dev                       # http://localhost:3000
 ```
 
@@ -33,7 +33,7 @@ Then set `DATABASE_URL="postgres://postgres:problemx@localhost:55432/problemx"`.
 
 | Variable | Required | What it's for |
 |---|---|---|
-| `DATABASE_URL` | yes | Postgres connection string. Use the **pooled** URL on serverless. |
+| `DATABASE_URL` | yes | Postgres connection string. Use the **pooled** URL on serverless. `POSTGRES_URL`, `DATABASE_URL_UNPOOLED` and `POSTGRES_URL_NON_POOLING` are also accepted, so either Vercel database integration works untouched. |
 | `AUTH_SECRET` | yes | Signs the session cookie. `openssl rand -base64 32` |
 | `INVITE_CODE` | no | Set it and teammates can self-register with it. Leave it unset and only the first account can ever be created. |
 
@@ -46,13 +46,10 @@ If either required variable is missing the app renders a setup screen instead of
 1. Push this repo to GitHub and import it at [vercel.com/new](https://vercel.com/new). Framework detection and build settings need no changes.
 2. **Storage → Create Database → Neon Postgres**, and connect it to the project. `DATABASE_URL` is injected for you.
 3. **Settings → Environment Variables**: add `AUTH_SECRET` (and `INVITE_CODE` if you want teammates to join).
-4. Create the tables against the production database — run this once from your machine with the production URL:
+4. **Redeploy.** Migrations run as part of the build, so the tables are created for you. (Vercel only injects new environment variables into *new* deployments — an existing one keeps the old values, which is why this step matters.)
+5. Open the site and create the first account.
 
-   ```bash
-   DATABASE_URL="<your-neon-pooled-url>" npm run db:push
-   ```
-
-5. Redeploy, open the site, and create the first account.
+If anything is still missing the app shows a setup screen that probes your database and tells you exactly which of the three pieces is absent, rather than a generic checklist.
 
 Everything runs on the Node runtime with `force-dynamic` on the authenticated routes, so there's no stale-cache surprise. Serverless-safe details are already handled: a single pooled connection cached on `globalThis`, and `prepare: false` so transaction poolers (Neon, Supabase) don't reject prepared statements.
 

@@ -12,14 +12,14 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   if (!isDatabaseConfigured() || !process.env.AUTH_SECRET) {
-    return <SetupNotice />;
+    return await SetupNotice();
   }
 
   let user;
   try {
     user = await getSession();
   } catch {
-    return <SetupNotice />;
+    return await SetupNotice();
   }
   if (!user) redirect("/login");
 
@@ -29,7 +29,7 @@ export default async function Home() {
   try {
     workspace = await loadWorkspace();
   } catch {
-    return <SetupNotice />;
+    return await SetupNotice();
   }
 
   const store = await cookies();

@@ -11,6 +11,7 @@ import bcrypt from "bcryptjs";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "../src/db/schema";
+import { resolveDatabaseUrl } from "../src/db/url";
 
 interface SeedRow {
   date?: string;
@@ -43,8 +44,8 @@ function toCalendarDate(raw: string): string | null {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
+  const url = resolveDatabaseUrl();
+  if (!url) throw new Error("No Postgres connection string found (DATABASE_URL).");
 
   const sql = postgres(url, { max: 1, prepare: false });
   const db = drizzle(sql, { schema });
