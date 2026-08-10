@@ -11,7 +11,7 @@ import bcrypt from "bcryptjs";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "../src/db/schema";
-import { resolveDatabaseUrl } from "../src/db/url";
+import { resolveDatabaseUrl, sslModeFor } from "../src/db/url";
 
 interface SeedRow {
   date?: string;
@@ -47,7 +47,7 @@ async function main() {
   const url = resolveDatabaseUrl();
   if (!url) throw new Error("No Postgres connection string found (DATABASE_URL).");
 
-  const sql = postgres(url, { max: 1, prepare: false });
+  const sql = postgres(url, { max: 1, prepare: false, ssl: sslModeFor(url) });
   const db = drizzle(sql, { schema });
 
   const args = process.argv.slice(2);

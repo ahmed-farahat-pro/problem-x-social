@@ -11,7 +11,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import { resolveDatabaseUrl } from "../src/db/url";
+import { resolveDatabaseUrl, sslModeFor } from "../src/db/url";
 
 async function main() {
   const url = resolveDatabaseUrl();
@@ -24,7 +24,12 @@ async function main() {
 
   // A dedicated single-use connection: migrations run DDL, which transaction
   // poolers handle badly, and we don't want to reuse the app's cached client.
-  const sql = postgres(url, { max: 1, prepare: false, connect_timeout: 30 });
+  const sql = postgres(url, {
+    max: 1,
+    prepare: false,
+    connect_timeout: 30,
+    ssl: sslModeFor(url),
+  });
   try {
     await migrate(drizzle(sql), { migrationsFolder: "./drizzle" });
     console.log("✓ database migrations applied");

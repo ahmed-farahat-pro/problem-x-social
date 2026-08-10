@@ -31,3 +31,25 @@ export function databaseUrlSource(): string | undefined {
 }
 
 export const DATABASE_URL_CANDIDATES = CANDIDATES;
+
+/**
+ * Hosted Postgres (Supabase, Neon, Aiven, Render…) refuses plaintext, but many
+ * of their copy-paste strings omit `sslmode`. Default to SSL for anything that
+ * isn't local so a correct URL doesn't fail with an opaque connection error.
+ */
+export function sslModeFor(url: string): "require" | undefined {
+  try {
+    const { hostname, searchParams } = new URL(url);
+    const explicit = searchParams.get("sslmode");
+    if (explicit) return explicit === "disable" ? undefined : "require";
+    const local =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal");
+    return local ? undefined : "require";
+  } catch {
+    return undefined;
+  }
+}

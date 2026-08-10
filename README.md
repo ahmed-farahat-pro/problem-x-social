@@ -44,12 +44,22 @@ If either required variable is missing the app renders a setup screen instead of
 ## Deploy to Vercel
 
 1. Push this repo to GitHub and import it at [vercel.com/new](https://vercel.com/new). Framework detection and build settings need no changes.
-2. **Storage → Create Database → Neon Postgres**, and connect it to the project. `DATABASE_URL` is injected for you.
-3. **Settings → Environment Variables**: add `AUTH_SECRET` (and `INVITE_CODE` if you want teammates to join).
+2. **Get a Postgres database.** Vercel's Storage tab is a paid marketplace, but the app only needs a connection string — it does not care who hosts it. Free options that work as-is:
+
+   | Provider | Notes |
+   |---|---|
+   | **Supabase** | Free Postgres. Use the **Transaction pooler** string (port `6543`) from Project Settings → Database. Pauses after long inactivity; resumes on the next request. |
+   | **Neon (direct)** | Sign up at neon.tech rather than through Vercel's marketplace — the direct free tier is separate from the paid integration. |
+   | **Aiven / Railway / Render** | All hand you a standard Postgres URL. Check the current free-tier terms before relying on one. |
+   | **Your own server** | Any reachable Postgres 14+ works. |
+
+3. **Settings → Environment Variables**: add `DATABASE_URL` (paste the string from step 2) and `AUTH_SECRET`. Add `INVITE_CODE` too if you want teammates to join.
 4. **Redeploy.** Migrations run as part of the build, so the tables are created for you. (Vercel only injects new environment variables into *new* deployments — an existing one keeps the old values, which is why this step matters.)
 5. Open the site and create the first account.
 
 If anything is still missing the app shows a setup screen that probes your database and tells you exactly which of the three pieces is absent, rather than a generic checklist.
+
+SSL is enabled automatically for any non-local host, so a hosted connection string works even when it omits `sslmode=require`. Pass `?sslmode=disable` if you ever need plaintext.
 
 Everything runs on the Node runtime with `force-dynamic` on the authenticated routes, so there's no stale-cache surprise. Serverless-safe details are already handled: a single pooled connection cached on `globalThis`, and `prepare: false` so transaction poolers (Neon, Supabase) don't reject prepared statements.
 

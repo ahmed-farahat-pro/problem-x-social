@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle, Database, KeyRound, Table2, XCircle } from "lucide-react";
 import postgres from "postgres";
-import { databaseUrlSource, resolveDatabaseUrl } from "@/db/url";
+import { databaseUrlSource, resolveDatabaseUrl, sslModeFor } from "@/db/url";
 
 type State = "ok" | "missing" | "error";
 
@@ -25,6 +25,7 @@ async function probe(): Promise<{ connection: Check; tables: Check }> {
   const sql = postgres(url, {
     max: 1,
     prepare: false,
+    ssl: sslModeFor(url),
     connect_timeout: 8,
     idle_timeout: 2,
   });
@@ -92,8 +93,8 @@ export default async function SetupNotice() {
           check={connection}
           title="Database connection"
           okBody="Connected."
-          body="On Vercel: Storage → Create Database → Neon Postgres, then connect it to this project. Any of DATABASE_URL, POSTGRES_URL or DATABASE_URL_UNPOOLED works."
-          code={`DATABASE_URL="postgres://user:pass@host/db"`}
+          body="Any Postgres works — Supabase, Neon, Aiven, Railway or your own server. Create one, then paste its connection string into Settings → Environment Variables. DATABASE_URL, POSTGRES_URL and DATABASE_URL_UNPOOLED are all accepted."
+          code={`DATABASE_URL="postgres://user:pass@host:5432/db"`}
         />
         <Step
           icon={<KeyRound className="size-4" />}

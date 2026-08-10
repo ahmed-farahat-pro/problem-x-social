@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
-import { resolveDatabaseUrl } from "./url";
+import { resolveDatabaseUrl, sslModeFor } from "./url";
 
 export class DatabaseNotConfiguredError extends Error {
   constructor() {
@@ -28,6 +28,7 @@ function client() {
   if (!globalForDb.__pxClient) {
     globalForDb.__pxClient = postgres(url, {
       max: 1,
+      ssl: sslModeFor(url),
       // Transaction poolers (Neon/Supabase pgbouncer) reject prepared statements.
       prepare: false,
       idle_timeout: 20,
