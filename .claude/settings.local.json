@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"/Users/ahmedfarahat/Downloads/mafesh_content_tracker \\(1\\).xlsx\" && ls -la /Users/ahmedfarahat/Desktop/social-media 2>/dev/null || echo \"dir empty/missing\")",
+      "Bash(npm -v)",
+      "Bash(sw_vers)",
+      "Bash(python3 -c \"import openpyxl; print\\('ok', openpyxl.__version__\\)\")"
+    ]
+  }
+}

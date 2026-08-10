@@ -1,0 +1,33 @@
+{
+  "companies": [
+    {
+      "name": "Example Brand",
+      "handle": "@example",
+      "colorHex": "#7C5CFF",
+      "brandNotes": "Tone of voice, do's and don'ts, recurring hashtags.",
+      "boards": [
+        {
+          "name": "Content Plan",
+          "emoji": "🗓️",
+          "rows": [
+            {
+              "date": "2026-01-05",
+              "contentType": "Carousel Post",
+              "title": "5 things to keep",
+              "content": "Slide 1: ٥ حاجات لازم تحتفظ بيهم!\n\nSlide 2: اكتب أي مشكلة حليتها",
+              "platforms": ["Instagram", "Facebook"],
+              "designStatus": "Uploaded to Drive",
+              "driveLink": "https://drive.google.com/drive/folders/xxxx",
+              "notes": "slide 2: replace the opening line",
+              "approval": "Approved",
+              "published": "Published",
+              "ideas": "",
+              "tags": ["evergreen"],
+              "owner": "Ahmed"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

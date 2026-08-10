@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand */
+  --color-brand-50: #f2eeff;
+  --color-brand-100: #e5ddff;
+  --color-brand-200: #cbbaff;
+  --color-brand-300: #ab90ff;
+  --color-brand-400: #8f6dff;
+  --color-brand-500: #7c5cff;
+  --color-brand-600: #6a45f0;
+  --color-brand-700: #5734c9;
+  --color-brand-800: #422894;
+  --color-brand-900: #2c1a63;
+
+  --color-accent-400: #ff6ea0;
+  --color-accent-500: #ff4d8d;
+  --color-accent-600: #ec2f74;
+
+  /* Neutral surface ramp — dark-first, tuned for long sessions */
+  --color-ink-950: #0a0b10;
+  --color-ink-900: #0f1117;
+  --color-ink-850: #14161e;
+  --color-ink-800: #191c26;
+  --color-ink-700: #232734;
+  --color-ink-600: #2f3444;
+  --color-ink-500: #434a5e;
+  --color-ink-400: #6b7387;
+  --color-ink-300: #98a0b3;
+  --color-ink-200: #c2c8d6;
+  --color-ink-100: #e4e7ee;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+
+  --radius-xl2: 0.875rem;
+}
+
+/* ------------------------------------------------------------------ base */
+
+:root {
+  --surface: var(--color-ink-950);
+  --surface-raised: var(--color-ink-900);
+  --surface-overlay: var(--color-ink-850);
+  --surface-hover: var(--color-ink-800);
+  --line: color-mix(in srgb, var(--color-ink-600) 60%, transparent);
+  --line-strong: var(--color-ink-600);
+  --text: var(--color-ink-100);
+  --text-muted: var(--color-ink-300);
+  --text-dim: var(--color-ink-400);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --surface: #f6f7fb;
+  --surface-raised: #ffffff;
+  --surface-overlay: #ffffff;
+  --surface-hover: #eef0f6;
+  --line: #e2e5ee;
+  --line-strong: #ced3e0;
+  --text: #12141c;
+  --text-muted: #555d70;
+  --text-dim: #7b8296;
+  color-scheme: light;
+}
+
+* {
+  border-color: var(--line);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+/* Utility aliases so components read cleanly */
+@utility surface {
+  background-color: var(--surface);
+}
+@utility surface-raised {
+  background-color: var(--surface-raised);
+}
+@utility surface-overlay {
+  background-color: var(--surface-overlay);
+}
+@utility text-body {
+  color: var(--text);
+}
+@utility text-muted {
+  color: var(--text-muted);
+}
+@utility text-dim {
+  color: var(--text-dim);
+}
+@utility border-line {
+  border-color: var(--line);
+}
+@utility border-line-strong {
+  border-color: var(--line-strong);
+}
+
+@utility card {
+  background-color: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl2);
+}
+
+@utility brand-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--color-brand-500),
+    var(--color-accent-500)
+  );
+}
+
+@utility focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  &:focus-visible {
+    outline-color: var(--color-brand-400);
+  }
+}
+
+/* ---------------------------------------------------------------- scrollbars */
+
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-ink-500) 55%, transparent);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--color-ink-400) 70%, transparent);
+    background-clip: content-box;
+  }
+}
+
+/* -------------------------------------------------------------- typography */
+
+/* Arabic captions need a face with proper shaping; the system stack covers it
+   on every platform we target, but the fallback order matters. */
+[dir="rtl"],
+.rtl-text {
+  font-family:
+    var(--font-sans), "SF Arabic", "Geeza Pro", "Noto Naskh Arabic", "Segoe UI",
+    Tahoma, sans-serif;
+  line-height: 1.85;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ motion */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes px-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fade-up {
+  animation: px-fade-up 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes px-toast {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-toast {
+  animation: px-toast 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes px-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-hover);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-ink-400) 12%, transparent),
+    transparent
+  );
+  animation: px-shimmer 1.4s infinite;
+}
+
+/* ------------------------------------------------------------------- print */
+
+@media print {
+  :root {
+    --surface: #fff;
+    --surface-raised: #fff;
+    --text: #111;
+    --text-muted: #444;
+    --line: #ddd;
+    color-scheme: light;
+  }
+  body {
+    background: #fff;
+    color: #111;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-break {
+    break-inside: avoid;
+  }
+}
