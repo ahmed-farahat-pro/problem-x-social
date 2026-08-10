@@ -383,7 +383,19 @@ export function WorkspaceProvider({
           company: Omit<Company, "boards">;
           board: Omit<Board, "posts"> | null;
         }>("/api/companies", { method: "POST", json: { name } });
-        await refresh();
+
+        // Splice the response straight in. Re-downloading the whole workspace
+        // here meant the click did nothing visible until a second round trip
+        // finished — which on a cold serverless DB read as "it's broken".
+        patchLocal((ws) => ({
+          companies: [
+            ...ws.companies,
+            {
+              ...created,
+              boards: createdBoard ? [{ ...createdBoard, posts: [] }] : [],
+            },
+          ],
+        }));
         setCompanyId(created.id);
         setBoardId(createdBoard?.id ?? null);
         notify(`Added “${created.name}”`);
@@ -393,7 +405,7 @@ export function WorkspaceProvider({
         return null;
       }
     },
-    [refresh, notify],
+    [patchLocal, notify],
   );
 
   const updateCompany = useCallback(
@@ -434,11 +446,21 @@ export function WorkspaceProvider({
   const createBoard = useCallback(
     async (targetCompanyId: string, name = "New Sheet", duplicateOf?: string) => {
       try {
-        const { board: created } = await api<{ board: Omit<Board, "posts"> }>(
-          "/api/boards",
-          { method: "POST", json: { companyId: targetCompanyId, name, duplicateOf } },
-        );
-        await refresh();
+        const { board: created, posts } = await api<{
+          board: Omit<Board, "posts">;
+          posts?: Post[];
+        }>("/api/boards", {
+          method: "POST",
+          json: { companyId: targetCompanyId, name, duplicateOf },
+        });
+
+        patchLocal((ws) => ({
+          companies: ws.companies.map((c) =>
+            c.id === targetCompanyId
+              ? { ...c, boards: [...c.boards, { ...created, posts: posts ?? [] }] }
+              : c,
+          ),
+        }));
         setCompanyId(targetCompanyId);
         setBoardId(created.id);
         notify(`Added “${created.name}”`);
@@ -448,7 +470,7 @@ export function WorkspaceProvider({
         return null;
       }
     },
-    [refresh, notify],
+    [patchLocal, notify],
   );
 
   const updateBoard = useCallback(
@@ -547,18 +569,27 @@ export function WorkspaceProvider({
 
   const updatePost = useCallback(
     (id: string, patch: PostInput, immediate = false) => {
+      // Only rebuild the branch that actually contains the post. Remapping the
+      // whole tree on every keystroke gave every company and board a new
+      // identity, invalidating every memo and re-rendering the entire view.
       patchLocal((ws) => ({
-        companies: ws.companies.map((c) => ({
-          ...c,
-          boards: c.boards.map((b) => ({
-            ...b,
-            posts: b.posts.map((p) =>
-              p.id === id
-                ? { ...p, ...patch, updatedAt: new Date().toISOString() }
-                : p,
-            ),
-          })),
-        })),
+        companies: ws.companies.map((c) => {
+          if (!c.boards.some((b) => b.posts.some((p) => p.id === id))) return c;
+          return {
+            ...c,
+            boards: c.boards.map((b) => {
+              if (!b.posts.some((p) => p.id === id)) return b;
+              return {
+                ...b,
+                posts: b.posts.map((p) =>
+                  p.id === id
+                    ? { ...p, ...patch, updatedAt: new Date().toISOString() }
+                    : p,
+                ),
+              };
+            }),
+          };
+        }),
       }));
 
       const existing = pending.current.get(id);
@@ -664,18 +695,30 @@ export function WorkspaceProvider({
     async (ids: string[], targetBoardId: string) => {
       if (!ids.length) return;
       try {
-        await api("/api/posts/bulk", {
+        const { posts: moved } = await api<{ posts: Post[] }>("/api/posts/bulk", {
           method: "POST",
           json: { action: "move", ids, boardId: targetBoardId },
         });
-        await refresh();
+
+        const byId = new Map(moved.map((p) => [p.id, p]));
+        patchLocal((ws) => ({
+          companies: ws.companies.map((c) => ({
+            ...c,
+            boards: c.boards.map((b) => {
+              const kept = b.posts.filter((p) => !byId.has(p.id));
+              return b.id === targetBoardId
+                ? { ...b, posts: [...kept, ...moved] }
+                : { ...b, posts: kept };
+            }),
+          })),
+        }));
         setSelected(new Set());
         notify(`Moved ${ids.length} post${ids.length === 1 ? "" : "s"}`);
       } catch (e) {
         notify((e as Error).message, "error");
       }
     },
-    [refresh, notify],
+    [patchLocal, notify],
   );
 
   const reschedule = useCallback(
